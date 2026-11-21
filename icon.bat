@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal EnableDelayedExpansion
 title Смена курсора мыши
-mode con cols=78 lines=34
+mode con cols=78 lines=34 2>nul
 color 0B
 
 rem ============================================================
@@ -18,11 +18,12 @@ if not exist "%STORE%" (
         echo.
         echo    [ОШИБКА] Не удалось создать папку:
         echo    %STORE%
-        echo    Проверьте права на запись в %APPDATA%.
+        echo    Проверьте права на запись в APPDATA.
         pause
         exit /b 1
     )
 )
+
 rem Проверка записи в STORE
 > "%STORE%\.write_test" echo test 2>nul
 if not exist "%STORE%\.write_test" (
@@ -146,23 +147,25 @@ call :getfile
 if not defined ICO_IN (
     echo.
     echo    Файл не выбран. Возвращаю в меню.
-    timeout /t 2 >nul
+    ping -n 3 127.0.0.1 >nul
     goto main
 )
 
+rem Безопасно получаем имя без расширения (не ломается на ! в имени)
+set "NAME="
 for %%A in ("!ICO_IN!") do set "NAME=%%~nA"
+if not defined NAME set "NAME=custom"
+
 echo.
 echo    Создаю курсор из файла: !NAME!
 echo.
 
-set "FAILED=0"
 for %%R in (%ROLES%) do (
     set "CUR_OUT=%STORE%\!NAME!_%%R.cur"
     set "HOT=tl"
     for %%C in (Crosshair IBeam Wait No SizeNS SizeWE SizeNWSE SizeNESW SizeAll) do if "%%R"=="%%C" set "HOT=center"
     powershell -NoProfile -ExecutionPolicy Bypass -Command "iex ((Get-Content -LiteralPath '%~f0' -Raw -Encoding UTF8) -split ('#PS'+'_START'))[1]"
     if errorlevel 1 (
-        set "FAILED=1"
         echo.
         echo    [ОШИБКА] Не удалось преобразовать файл в курсор для роли %%R.
         echo    Попробуйте другую картинку: лучше всего PNG с прозрачным фоном.
@@ -171,12 +174,8 @@ for %%R in (%ROLES%) do (
         goto main
     )
     reg add "HKCU\Control Panel\Cursors" /v %%R /t REG_SZ /d "!CUR_OUT!" /f >nul
-    if errorlevel 1 (
-        echo    [ПРЕДУПРЕЖДЕНИЕ] Не удалось записать реестр для %%R.
-    )
+    if errorlevel 1 echo    [ПРЕДУПРЕЖДЕНИЕ] Не удалось записать реестр для %%R.
 )
-
-if "!FAILED!"=="1" goto main
 
 reg add "HKCU\Control Panel\Cursors" /ve /t REG_SZ /d "" /f >nul
 reg add "HKCU\Control Panel\Cursors" /v "Scheme Source" /t REG_DWORD /d 1 /f >nul
@@ -199,22 +198,21 @@ rem ------------------------------------------------------------
 rem  Сброс на стандартные курсоры
 rem ------------------------------------------------------------
 :reset
-rem Явные пути для Crosshair/IBeam — надёжнее пустой строки
-reg add "HKCU\Control Panel\Cursors" /v Arrow       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_arrow.cur"     /f >nul
-reg add "HKCU\Control Panel\Cursors" /v Help        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_helpsel.cur"   /f >nul
-reg add "HKCU\Control Panel\Cursors" /v AppStarting /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_working.ani"   /f >nul
-reg add "HKCU\Control Panel\Cursors" /v Wait        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_busy.ani"      /f >nul
-reg add "HKCU\Control Panel\Cursors" /v Crosshair   /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_cross.cur"     /f >nul
-reg add "HKCU\Control Panel\Cursors" /v IBeam       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_text.cur"      /f >nul
-reg add "HKCU\Control Panel\Cursors" /v NWPen       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_pen.cur"       /f >nul
-reg add "HKCU\Control Panel\Cursors" /v No          /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_unavail.cur"   /f >nul
-reg add "HKCU\Control Panel\Cursors" /v SizeNS      /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_ns.cur"        /f >nul
-reg add "HKCU\Control Panel\Cursors" /v SizeWE      /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_ew.cur"        /f >nul
-reg add "HKCU\Control Panel\Cursors" /v SizeNWSE    /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_nwse.cur"      /f >nul
-reg add "HKCU\Control Panel\Cursors" /v SizeNESW    /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_nesw.cur"      /f >nul
-reg add "HKCU\Control Panel\Cursors" /v SizeAll     /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_move.cur"      /f >nul
-reg add "HKCU\Control Panel\Cursors" /v UpArrow     /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_up.cur"        /f >nul
-reg add "HKCU\Control Panel\Cursors" /v Hand        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_link.cur"      /f >nul
+reg add "HKCU\Control Panel\Cursors" /v Arrow       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_arrow.cur"   /f >nul
+reg add "HKCU\Control Panel\Cursors" /v Help        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_helpsel.cur" /f >nul
+reg add "HKCU\Control Panel\Cursors" /v AppStarting /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_working.ani" /f >nul
+reg add "HKCU\Control Panel\Cursors" /v Wait        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_busy.ani"    /f >nul
+reg add "HKCU\Control Panel\Cursors" /v Crosshair   /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_cross.cur"   /f >nul
+reg add "HKCU\Control Panel\Cursors" /v IBeam       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_text.cur"    /f >nul
+reg add "HKCU\Control Panel\Cursors" /v NWPen       /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_pen.cur"     /f >nul
+reg add "HKCU\Control Panel\Cursors" /v No          /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_unavail.cur" /f >nul
+reg add "HKCU\Control Panel\Cursors" /v SizeNS      /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_ns.cur"      /f >nul
+reg add "HKCU\Control Panel\Cursors" /v SizeWE      /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_ew.cur"      /f >nul
+reg add "HKCU\Control Panel\Cursors" /v SizeNWSE    /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_nwse.cur"    /f >nul
+reg add "HKCU\Control Panel\Cursors" /v SizeNESW    /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_nesw.cur"    /f >nul
+reg add "HKCU\Control Panel\Cursors" /v SizeAll     /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_move.cur"    /f >nul
+reg add "HKCU\Control Panel\Cursors" /v UpArrow     /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_up.cur"      /f >nul
+reg add "HKCU\Control Panel\Cursors" /v Hand        /t REG_EXPAND_SZ /d "%%SYSTEMROOT%%\cursors\aero_link.cur"    /f >nul
 reg add "HKCU\Control Panel\Cursors" /ve /t REG_SZ /d "Windows Default" /f >nul
 reg add "HKCU\Control Panel\Cursors" /v "Scheme Source" /t REG_DWORD /d 2 /f >nul
 call :refresh
@@ -256,7 +254,6 @@ try {
     $isIco = ($b.Length -gt 22 -and $b[0] -eq 0 -and $b[1] -eq 0 -and $b[2] -eq 1 -and $b[3] -eq 0)
 
     if ($isIco) {
-        # Настоящий .ico: превращаем в курсор и задаём горячую точку
         $b[2] = 2
         $n = [BitConverter]::ToUInt16($b, 4)
         for ($i = 0; $i -lt $n; $i++) {
@@ -269,14 +266,12 @@ try {
         }
         [IO.File]::WriteAllBytes($env:CUR_OUT, $b)
     } else {
-        # PNG/JPG/BMP/GIF (в том числе под видом .ico): строим .cur нужного размера
         Add-Type -AssemblyName System.Drawing
         $img = [System.Drawing.Image]::FromFile($env:ICO_IN)
         $bmp = New-Object System.Drawing.Bitmap $size, $size, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
         $g = [System.Drawing.Graphics]::FromImage($bmp)
         try {
             $g.InterpolationMode = 'HighQualityBicubic'
-            # Clear не нужен: новый Bitmap с Format32bppArgb уже прозрачный
             $s  = [Math]::Min($size / [double]$img.Width, $size / [double]$img.Height)
             $dw = [int][Math]::Max(1, [Math]::Round($img.Width * $s))
             $dh = [int][Math]::Max(1, [Math]::Round($img.Height * $s))
@@ -296,7 +291,7 @@ try {
         if ($hot -eq 'center') { $hx = [int]($size / 2); $hy = [int]($size / 2) } else { $hx = 0; $hy = 0 }
         $out = New-Object IO.MemoryStream
         try {
-            $wr = New-Object IO.BinaryWriter $out
+            $wr = New-Object IO.BinaryWriter($out, [Text.Encoding]::UTF8, $true)
             try {
                 $wr.Write([uint16]0); $wr.Write([uint16]2); $wr.Write([uint16]1)
                 $wr.Write([byte]$size); $wr.Write([byte]$size); $wr.Write([byte]0); $wr.Write([byte]0)
